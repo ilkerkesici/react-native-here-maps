@@ -3,11 +3,29 @@ package com.heremapsrn.react.map;
 import android.content.Context;
 import android.graphics.PointF;
 import android.util.Log;
+import android.os.AsyncTask;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.BufferedOutputStream;
+import android.graphics.Bitmap; 
+import android.graphics.BitmapFactory;
+import 	java.net.URLConnection;
+import 	java.io.BufferedInputStream;
+import 	java.io.ByteArrayOutputStream;
+
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.uimanager.ThemedReactContext;
 
 
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.here.android.mpa.common.GeoCoordinate;
+import com.here.android.mpa.common.GeoBoundingBox;
 import com.here.android.mpa.common.MapEngine;
 import com.here.android.mpa.common.OnEngineInitListener;
 import com.here.android.mpa.common.ViewObject;
@@ -32,6 +50,8 @@ public class HereMapView extends MapView {
 
     private Map map;
 
+    private ReactContext reactContext;
+
     private GeoCoordinate mapCenter;
     private String mapType = "normal";
 
@@ -41,11 +61,11 @@ public class HereMapView extends MapView {
 
     ArrayList<MapMarker> markers;
 
-    public HereMapView(Context context) {
+    public HereMapView(ReactContext context) {
         super(context);
 
         markers = new ArrayList<MapMarker>();
-
+        this.reactContext = context;
         MapEngine.getInstance().init(context, new OnEngineInitListener() {
             @Override
             public void onEngineInitializationCompleted(OnEngineInitListener.Error error) {
@@ -97,6 +117,16 @@ public class HereMapView extends MapView {
                                     // return false to allow the map to handle this callback also
                                     return false;
                                 }
+                                // Zoomout veya Zoomin algılama
+                                @Override
+                                public void onPanEnd() {
+                                    double level = map.getZoomLevel();
+                                    GeoCoordinate center = map.getCenter();
+                                    GeoBoundingBox bounding = map.getBoundingBox();
+                                    Log.e(TAG, String.format("Map Zoom Level: %f \n", level));
+                                    Log.e(TAG, String.format("Latitude: %f, Longitude: %f", center.getLatitude(), center.getLongitude()));
+                                    onMove(level, center.getLatitude(), center.getLongitude(), bounding.getTopLeft(), bounding.getBottomRight());
+                                }
                             });
 
 
@@ -114,6 +144,18 @@ public class HereMapView extends MapView {
         });
 
 
+    }
+    // Event Emiiter to Ract native 
+    private void onMove(double zoom, double latitude, double longitude, GeoCoordinate topLeft, GeoCoordinate bottomRight) { 
+        WritableMap payload = Arguments.createMap();
+        payload.putDouble("Zoom", zoom);
+        payload.putDouble( "CenterLatitude", latitude);
+        payload.putDouble("CenterLongitude", longitude);
+        payload.putDouble("BottomRightLatitude", bottomRight.getLatitude());
+        payload.putDouble("BottomRightLongitude", bottomRight.getLongitude());
+        payload.putDouble("TopLeftLatitude", topLeft.getLatitude());
+        payload.putDouble("TopLeftLongitude", topLeft.getLongitude());
+        this.reactContext.getJSModule( DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onMoveMap", payload); 
     }
 
     @Override
@@ -136,7 +178,7 @@ public class HereMapView extends MapView {
         double longitude = center.getDouble("longitude");
 
         mapCenter = new GeoCoordinate(latitude, longitude);
-        if (mapIsReady) map.setCenter(mapCenter, Map.Animation.NONE);
+        if (mapIsReady) map.setCenter(mapCenter, Map.Animation.LINEAR);
 
     }
 
@@ -184,7 +226,7 @@ public class HereMapView extends MapView {
     }
 
     public void setMarkersList(ReadableArray markersPosition) {
-
+        markers = new ArrayList<MapMarker>();
         for(int i=0; i< markersPosition.size(); i++) {
 
             ReadableMap readableMap = markersPosition.getMap(i);
@@ -196,17 +238,97 @@ public class HereMapView extends MapView {
 
                 String title = readableMap.getString("title");
                 String description = readableMap.getString("description");
+                String eventCategory = readableMap.getString("event_category");
 
                 // Create a custom marker image
+
                 Image myImage = new Image();
 
                 try {
-                    myImage.setImageResource(R.drawable.marker);
+                    switch(eventCategory) {
+                        case "0":
+                            myImage.setImageResource(R.drawable.location);
+                            break;
+                        case "1002":
+                            myImage.setImageResource(R.drawable.yangin_bina);
+                            break;
+                        case "1003":
+                            myImage.setImageResource(R.drawable.yangin_orman);
+                            break;
+                        case "1004":
+                            myImage.setImageResource(R.drawable.yangin_sanayi);
+                            break;
+                        case "1005":
+                            myImage.setImageResource(R.drawable.yangin);
+                            break;
+                        case "2001":
+                            myImage.setImageResource(R.drawable.altyapi_elektrik);
+                            break;
+                        case "2002":
+                            myImage.setImageResource(R.drawable.altyapi_gaz);
+                            break;
+                        case "2003":
+                            myImage.setImageResource(R.drawable.altyapi_su);
+                            break;
+                        case "2004":
+                            myImage.setImageResource(R.drawable.altyapi_haberlesme);
+                            break;
+                        case "2005":
+                            myImage.setImageResource(R.drawable.altyapi_yol);
+                            break;
+                        case "2006":
+                            myImage.setImageResource(R.drawable.altyapi);
+                            break;
+                        case "3001":
+                            myImage.setImageResource(R.drawable.trafik_ulasim);
+                            break;
+                        case "3002":
+                            myImage.setImageResource(R.drawable.trafik_kaza);
+                            break;
+                        case "3005":
+                            myImage.setImageResource(R.drawable.trafik);
+                            break;
+                        case "4001":
+                            myImage.setImageResource(R.drawable.afet_deprem);
+                            break;
+                        case "4002":
+                            myImage.setImageResource(R.drawable.afet_firtina);
+                            break;
+                        case "4003":
+                            myImage.setImageResource(R.drawable.afet_heyelan);
+                            break;
+                        case "4004":
+                            myImage.setImageResource(R.drawable.afet_sel);
+                            break;
+                        case "4005":
+                            myImage.setImageResource(R.drawable.afet_saganak);
+                            break;
+                        case "4006":
+                            myImage.setImageResource(R.drawable.afet);
+                            break;
+                        case "5001":
+                            myImage.setImageResource(R.drawable.guvenlik_saldiri);
+                            break;
+                        case "5003":
+                            myImage.setImageResource(R.drawable.guvenlik_cinayet);
+                            break;
+                        case "5004":
+                            myImage.setImageResource(R.drawable.guvenlik_hirsizlik);
+                            break;
+                        case "5005":
+                            myImage.setImageResource(R.drawable.guvenlik_teror);
+                            break;
+                        case "5006":
+                            myImage.setImageResource(R.drawable.guvenlik);
+                            break;
+                        default:
+                            // code block
+                            myImage.setImageResource(R.drawable.marker);
+                    }
                 } catch (IOException e) {
                     Log.e(TAG, String.format("Error initializing image marker: %s", e.getMessage()));
                 }
-
-                //Create the MamMarker
+                
                 MapMarker marker = new MapMarker(new GeoCoordinate(latitude, longitude), myImage);
                 marker.setAnchorPoint(new PointF(myImage.getWidth() / 2f, myImage.getHeight()));
 
@@ -217,9 +339,7 @@ public class HereMapView extends MapView {
                 markers.add(marker);
 
                 if (mapIsReady) map.addMapObject(marker);
-
         }
 
     }
-
 }
