@@ -3,23 +3,11 @@ package com.heremapsrn.react.map;
 import android.content.Context;
 import android.graphics.PointF;
 import android.util.Log;
-import android.os.AsyncTask;
-import java.net.URL;
-import java.net.HttpURLConnection;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.BufferedOutputStream;
-import android.graphics.Bitmap; 
-import android.graphics.BitmapFactory;
-import 	java.net.URLConnection;
-import 	java.io.BufferedInputStream;
-import 	java.io.ByteArrayOutputStream;
 
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.uimanager.ThemedReactContext;
 
 
 import com.facebook.react.bridge.ReadableArray;

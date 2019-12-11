@@ -7,9 +7,15 @@ import {
   Button,
   Text,
   NativeModules,
+  NativeEventEmitter,
+  DeviceEventEmitter,
   requireNativeComponent,
   findNodeHandle
 } from 'react-native';
+
+
+
+
 
 const MAP_TYPES = {
   NORMAL: 'normal',
@@ -19,7 +25,11 @@ const MAP_TYPES = {
 const MapViewComponent = NativeModules.MapView;
 const UIManager = NativeModules.UIManager;
 
-var iface = {
+// const eventEmitter = new NativeEventEmitter(MapViewComponent);
+
+// eventEmitter.addListener('onSessionConnect', onSessionConnect);
+
+let iface = {
   name: 'MapView',
   propTypes: {
     //...View.propTypes, // include the default view properties
@@ -74,15 +84,17 @@ const HereMapView = requireNativeComponent('HereMapView', iface);
 
 export default class MapView extends React.Component {
 
+  eventEmitter = new NativeEventEmitter(MapViewComponent);
+
   constructor(props) {
     super(props);
 
     this.state = {
       isReady: false,
-      zoomLevel: 15,
+      zoomLevel: this.props.zoom || 15,
       center: this.props.center
     };
-
+    this.eventEmitter.addListener('onMoveMap', this.onMoveMap);
     this._onMapReady = this._onMapReady.bind(this);
   }
 
@@ -92,6 +104,7 @@ export default class MapView extends React.Component {
   // for the initial render.
   componentWillUpdate(nextProps) {
   }
+
 
   // componentDidMount() is invoked immediately after a component is mounted.
   // Initialization that requires DOM nodes should go here. If you need to load
@@ -104,14 +117,13 @@ export default class MapView extends React.Component {
   }
 
   render() {
-    console.log('Center: ', this.props.center);
     return (
       
       <HereMapView
         style={ this.props.style }
         center={this.props.center}
         mapType={ this.props.mapType }
-        initialZoom={ this.props.initialZoom } 
+        initialZoom={ this.state.zoomLevel } 
         userLocation={this.props.userLocation}
         markersList={this.props.markersList} >
 
@@ -122,6 +134,10 @@ export default class MapView extends React.Component {
       </HereMapView>
     );
   }
+
+  onMoveMap = (event) => {
+    this.props.onMove ? this.props.onMove(event) : null;
+   };
 
   _onMapReady() {
     this.setState({ isReady: true });
@@ -147,12 +163,13 @@ export default class MapView extends React.Component {
     }
   }
 
-  onSetCenterPress = () => {
-    this.setState({ center : this.state.center });
+
+  onSetCenterPress = (center) => {
+    this.setState({ center : center });
     UIManager.dispatchViewManagerCommand(
         findNodeHandle(this),
         UIManager.HereMapView.Commands.setCenter,
-        [ this.state.center ] );
+        [ center ] );
   }
 
 }
