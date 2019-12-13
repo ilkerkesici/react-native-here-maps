@@ -28,6 +28,7 @@ import com.heremapsrn.R;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 
 public class HereMapView extends MapView {
 
@@ -49,10 +50,13 @@ public class HereMapView extends MapView {
 
     ArrayList<MapMarker> markers;
 
+    HashMap<MapMarker,Integer> markerIdDict;
+
     public HereMapView(ReactContext context) {
         super(context);
 
         markers = new ArrayList<MapMarker>();
+        markerIdDict = new HashMap<MapMarker, Integer>();
         this.reactContext = context;
         MapEngine.getInstance().init(context, new OnEngineInitListener() {
             @Override
@@ -88,18 +92,23 @@ public class HereMapView extends MapView {
                                 public boolean onMapObjectsSelected(List<ViewObject> objects) {
                                     for (ViewObject viewObj : objects) {
                                         if (viewObj.getBaseType() == ViewObject.Type.USER_OBJECT) {
+                                            
                                             if (((MapObject) viewObj).getType() == MapObject.Type.MARKER) {
                                                 // At this point we have the originally added
                                                 // map marker, so we can do something with it
                                                 // (like change the visibility, or more
                                                 // marker-specific actions)
-                                                if(((MapMarker) viewObj).isInfoBubbleVisible()){
-                                                    ((MapMarker) viewObj).hideInfoBubble();
-                                                } else {
-                                                    ((MapMarker) viewObj).showInfoBubble();
-                                                }
+                                                //
+                                                // if(((MapMarker) viewObj).isInfoBubbleVisible()){
+                                                //     ((MapMarker) viewObj).hideInfoBubble();
+                                                // }else {
+                                                //     ((MapMarker) viewObj).showInfoBubble();
+                                                //     //markerVisibleDict.put(((MapMarker) viewObj), true);
+                                                // }
+                                                onClickBubble(((MapMarker) viewObj));
 
                                             }
+                                            
                                         }
                                     }
                                     // return false to allow the map to handle this callback also
@@ -116,15 +125,10 @@ public class HereMapView extends MapView {
                                     onMove(level, center.getLatitude(), center.getLongitude(), bounding.getTopLeft(), bounding.getBottomRight());
                                 }
                             });
-
-
-
-
-
                     Log.i(TAG, "INIT FINISH !!!!");
-
                 } else {
                     Log.e(TAG, String.format("Error initializing map: %s", error.getDetails()));
+                    
                 }
 
 
@@ -133,6 +137,15 @@ public class HereMapView extends MapView {
 
 
     }
+
+    private void onClickBubble(MapMarker marker){
+        Log.e(TAG, String.format("Marker Id : %s *********************\n", markerIdDict.get(marker)));
+         WritableMap payload = Arguments.createMap();
+        payload.putDouble("EventId", markerIdDict.get(marker));
+        setCenterWithGeoCoordinate(marker.getCoordinate());
+        this.reactContext.getJSModule( DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onMarkerClicked", payload); 
+    }
+
     // Event Emiiter to Ract native 
     private void onMove(double zoom, double latitude, double longitude, GeoCoordinate topLeft, GeoCoordinate bottomRight) { 
         WritableMap payload = Arguments.createMap();
@@ -158,6 +171,10 @@ public class HereMapView extends MapView {
         super.onResume();
         Log.d(TAG, "onResume...");
         MapEngine.getInstance().onResume();
+    }
+
+    private void setCenterWithGeoCoordinate(GeoCoordinate center){
+        if (mapIsReady) map.setCenter(center, Map.Animation.LINEAR);
     }
 
     public void setCenter(ReadableMap center) {
@@ -215,6 +232,7 @@ public class HereMapView extends MapView {
 
     public void setMarkersList(ReadableArray markersPosition) {
         markers = new ArrayList<MapMarker>();
+        markerIdDict.clear();
         for(int i=0; i< markersPosition.size(); i++) {
 
             ReadableMap readableMap = markersPosition.getMap(i);
@@ -227,6 +245,8 @@ public class HereMapView extends MapView {
                 String title = readableMap.getString("title");
                 String description = readableMap.getString("description");
                 String eventCategory = readableMap.getString("event_category");
+
+                Integer eventId = readableMap.getInt("event_id");
 
                 // Create a custom marker image
 
@@ -325,6 +345,8 @@ public class HereMapView extends MapView {
 
                 // Add the MapMarker in the list
                 markers.add(marker);
+                markerIdDict.put(marker, eventId); //Add event id to hasmap because of understanding marker id when on click
+                
 
                 if (mapIsReady) map.addMapObject(marker);
         }

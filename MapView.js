@@ -95,6 +95,7 @@ export default class MapView extends React.Component {
       center: this.props.center
     };
     this.eventEmitter.addListener('onMoveMap', this.onMoveMap);
+    this.eventEmitter.addListener('onMarkerClicked', this.onMarkerClicked);
     this._onMapReady = this._onMapReady.bind(this);
   }
 
@@ -137,6 +138,9 @@ export default class MapView extends React.Component {
 
   onMoveMap = (event) => {
     this.props.onMove ? this.props.onMove(event) : null;
+   };
+   onMarkerClicked = (event) => {
+    this.props.onMarkerClicked ? this.props.onMarkerClicked(event) : null;
    };
 
   _onMapReady() {
