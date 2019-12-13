@@ -28,6 +28,7 @@ import com.heremapsrn.R;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+//import java.util.Map;
 import java.util.HashMap;
 
 public class HereMapView extends MapView {
@@ -139,9 +140,10 @@ public class HereMapView extends MapView {
     }
 
     private void onClickBubble(MapMarker marker){
-        Log.e(TAG, String.format("Marker Id : %s *********************\n", markerIdDict.get(marker)));
+        //Log.e(TAG, String.format("Marker Id : %d *********************\n", markerIdDict.get(marker)));
+        Log.e(TAG, String.format("Marker title : %s *********************\n", marker.getTitle()));
          WritableMap payload = Arguments.createMap();
-        payload.putDouble("EventId", markerIdDict.get(marker));
+        payload.putString("EventId", marker.getTitle());
         setCenterWithGeoCoordinate(marker.getCoordinate());
         this.reactContext.getJSModule( DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onMarkerClicked", payload); 
     }
@@ -230,9 +232,15 @@ public class HereMapView extends MapView {
 
     }
 
+    private void removeMarkers(){
+        for(int i = 0; i < markers.size() ; i++){
+            map.removeMapObject(markers.get(i));
+        }
+    }
+
     public void setMarkersList(ReadableArray markersPosition) {
-        markers = new ArrayList<MapMarker>();
-        markerIdDict.clear();
+        removeMarkers();
+        markers.clear();
         for(int i=0; i< markersPosition.size(); i++) {
 
             ReadableMap readableMap = markersPosition.getMap(i);
@@ -340,12 +348,13 @@ public class HereMapView extends MapView {
                 MapMarker marker = new MapMarker(new GeoCoordinate(latitude, longitude), myImage);
                 marker.setAnchorPoint(new PointF(myImage.getWidth() / 2f, myImage.getHeight()));
 
-                marker.setTitle(title);
+                marker.setTitle(eventId.toString()); // Add event_id to title 
+                                                     //because we don't use the custom bubble because of nonclickable,
+                                                     // we get event_id from marker title then on RN Side convert it to integer
                 marker.setDescription(description);
 
                 // Add the MapMarker in the list
                 markers.add(marker);
-                markerIdDict.put(marker, eventId); //Add event id to hasmap because of understanding marker id when on click
                 
 
                 if (mapIsReady) map.addMapObject(marker);
