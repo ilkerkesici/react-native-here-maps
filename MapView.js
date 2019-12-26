@@ -96,6 +96,7 @@ export default class MapView extends React.Component {
     };
     this.eventEmitter.addListener('onMoveMap', this.onMoveMap);
     this.eventEmitter.addListener('onMarkerClicked', this.onMarkerClicked);
+    this.eventEmitter.addListener('onMapTap', this.onMapTap);
     this._onMapReady = this._onMapReady.bind(this);
   }
 
@@ -136,6 +137,10 @@ export default class MapView extends React.Component {
     );
   }
 
+  onMapTap = (event) => {
+    console.log(this.props);
+    this.props.onMapTap ? this.props.onMapTap(event) : null;
+  }
   onMoveMap = (event) => {
     this.props.onMove ? this.props.onMove(event) : null;
    };

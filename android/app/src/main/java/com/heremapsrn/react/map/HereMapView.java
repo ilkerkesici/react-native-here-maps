@@ -92,8 +92,9 @@ public class HereMapView extends MapView {
                                 @Override
                                 public boolean onMapObjectsSelected(List<ViewObject> objects) {
                                     for (ViewObject viewObj : objects) {
+                                        Log.e(TAG, String.format("Marker Object : %s *********************\n",viewObj.getBaseType()));
                                         if (viewObj.getBaseType() == ViewObject.Type.USER_OBJECT) {
-                                            
+                                            // Log.e(TAG, String.format("Marker Object : %s *********************\n",viewObj.getBaseType()));
                                             if (((MapObject) viewObj).getType() == MapObject.Type.MARKER) {
                                                 // At this point we have the originally added
                                                 // map marker, so we can do something with it
@@ -125,6 +126,14 @@ public class HereMapView extends MapView {
                                     Log.e(TAG, String.format("Latitude: %f, Longitude: %f", center.getLatitude(), center.getLongitude()));
                                     onMove(level, center.getLatitude(), center.getLongitude(), bounding.getTopLeft(), bounding.getBottomRight());
                                 }
+
+                                @Override
+                                public boolean onTapEvent(PointF p) {
+                                    GeoCoordinate position = map.pixelToGeo(p);
+                                    Log.e(TAG, String.format("Latitude: %f, Longitude: %f", position.getLatitude(), position.getLongitude()));
+                                    onTapOnMap(position);
+                                    return false;
+                                }
                             });
                     Log.i(TAG, "INIT FINISH !!!!");
                 } else {
@@ -140,12 +149,18 @@ public class HereMapView extends MapView {
     }
 
     private void onClickBubble(MapMarker marker){
-        //Log.e(TAG, String.format("Marker Id : %d *********************\n", markerIdDict.get(marker)));
         Log.e(TAG, String.format("Marker title : %s *********************\n", marker.getTitle()));
          WritableMap payload = Arguments.createMap();
         payload.putString("EventId", marker.getTitle());
         setCenterWithGeoCoordinate(marker.getCoordinate());
         this.reactContext.getJSModule( DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onMarkerClicked", payload); 
+    }
+
+    private void onTapOnMap(GeoCoordinate position){
+         WritableMap payload = Arguments.createMap();
+        payload.putDouble( "Latitude", position.getLatitude());
+        payload.putDouble("Longitude", position.getLongitude());
+        this.reactContext.getJSModule( DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onMapTap", payload);
     }
 
     // Event Emiiter to Ract native 
@@ -347,8 +362,12 @@ public class HereMapView extends MapView {
                 
                 MapMarker marker = new MapMarker(new GeoCoordinate(latitude, longitude), myImage);
                 marker.setAnchorPoint(new PointF(myImage.getWidth() / 2f, myImage.getHeight()));
-
-                marker.setTitle(eventId.toString()); // Add event_id to title 
+                if(eventId == -1){
+                     marker.setTitle(title);
+                }else{
+                    marker.setTitle(eventId.toString()); // Add event_id to title
+                }
+                
                                                      //because we don't use the custom bubble because of nonclickable,
                                                      // we get event_id from marker title then on RN Side convert it to integer
                 marker.setDescription(description);
